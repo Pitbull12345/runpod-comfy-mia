@@ -44,7 +44,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/runpod-comfy-mia:${{ matrix.tag }}
+          tags: ghcr.io/pitbull12345/runpod-comfy-mia:${{ matrix.tag }}
           build-args: |
             CUDA_IMAGE=${{ matrix.cuda_image }}
             TORCH_INDEX=${{ matrix.torch_index }}
