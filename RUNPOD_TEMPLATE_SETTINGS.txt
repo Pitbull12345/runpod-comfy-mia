@@ -1,0 +1,26 @@
+A100 / Ampere
+Image: ghcr.io/YOUR_USER/runpod-comfy-mia:cu128
+
+RTX 5090 / Blackwell
+Image: ghcr.io/YOUR_USER/runpod-comfy-mia:cu130
+
+Container Start Command:
+LEAVE BLANK
+
+Expose:
+8188/http
+8888/http
+22/tcp
+
+Container Disk:
+200-250 GB recommended if downloading the complete workflow model collection.
+
+Optional volume/network volume:
+Mount at /workspace
+
+Environment:
+PUBLIC_KEY=<your SSH public key>
+ENABLE_JUPYTER=1
+JUPYTER_TOKEN=<strong token>
+
+Do not set a /workspace startup script or venv path.

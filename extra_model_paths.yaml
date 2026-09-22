@@ -1,0 +1,21 @@
+workspace:
+  base_path: /workspace
+  checkpoints: models/checkpoints
+  diffusion_models: |
+    models/diffusion_models
+    models/unet
+  unet: |
+    models/unet
+    models/diffusion_models
+  vae: models/vae
+  clip: |
+    models/clip
+    models/text_encoders
+  text_encoders: |
+    models/text_encoders
+    models/clip
+  clip_vision: models/clip_vision
+  loras: models/loras
+  controlnet: models/controlnet
+  upscale_models: models/upscale_models
+  embeddings: models/embeddings
