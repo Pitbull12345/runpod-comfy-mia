@@ -1,0 +1,29 @@
+Container image:
+ghcr.io/pitbull12345/runpod-comfy-mia:train-cu130
+
+Container Start Command:
+LEAVE BLANK
+
+Registry Auth:
+None if package is public
+
+Ports:
+8675/http
+8888/http
+22/tcp
+
+Recommended env vars:
+PUBLIC_KEY=<your SSH public key>
+AI_TOOLKIT_AUTH=<strong password/token>
+JUPYTER_TOKEN=<strong token>
+
+Optional:
+HF_TOKEN=<Hugging Face read token>
+ENABLE_JUPYTER=1
+
+Persistent paths:
+/workspace/datasets
+/workspace/lora-output
+/workspace/training-configs
+/workspace/model-cache
+/workspace/training-logs
