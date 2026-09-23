@@ -1,0 +1,65 @@
+# syntax=docker/dockerfile:1.7
+FROM nvidia/cuda:13.0.3-runtime-ubuntu24.04
+
+ARG DEBIAN_FRONTEND=noninteractive
+ARG AI_TOOLKIT_REF=main
+
+ENV LANG=C.UTF-8 LC_ALL=C.UTF-8 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 \
+    AI_TOOLKIT=/opt/ai-toolkit AI_TOOLKIT_VENV=/opt/ai-toolkit-venv \
+    PATH=/opt/ai-toolkit-venv/bin:$PATH \
+    WORKSPACE=/workspace AI_TOOLKIT_PORT=8675 JUPYTER_PORT=8888 ENABLE_JUPYTER=1 \
+    HF_HOME=/workspace/model-cache/huggingface \
+    HUGGINGFACE_HUB_CACHE=/workspace/model-cache/huggingface/hub \
+    TRANSFORMERS_CACHE=/workspace/model-cache/huggingface/transformers \
+    TORCH_HOME=/workspace/model-cache/torch \
+    PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+    TORCH_CUDA_ARCH_LIST="8.0 8.6 8.9 9.0 10.0 12.0"
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates curl wget git git-lfs build-essential cmake pkg-config \
+    python3.12 python3.12-venv python3-pip python3-dev python3-setuptools python3-wheel \
+    ffmpeg openssh-server openssl tini nano vim-tiny tmux htop nvtop tree jq rsync unzip zip \
+    iproute2 procps psmisc lsof libgl1 libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/* && git lfs install --system
+
+RUN curl -fsSL https://deb.nodesource.com/setup_23.x -o /tmp/nodesource_setup.sh \
+    && bash /tmp/nodesource_setup.sh \
+    && apt-get update && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/* /tmp/nodesource_setup.sh
+
+RUN git clone --recurse-submodules https://github.com/ostris/ai-toolkit.git /opt/ai-toolkit \
+    && cd /opt/ai-toolkit \
+    && git fetch --tags origin \
+    && git checkout "${AI_TOOLKIT_REF}" \
+    && git submodule update --init --recursive \
+    && git rev-parse HEAD > /opt/AI_TOOLKIT_BUILD_COMMIT
+
+RUN python3.12 -m venv /opt/ai-toolkit-venv \
+    && /opt/ai-toolkit-venv/bin/python -m pip install --upgrade pip setuptools wheel \
+    && /opt/ai-toolkit-venv/bin/python -m pip install --no-cache-dir \
+       torch==2.13.0 torchvision==0.28.0 torchaudio==2.11.0 \
+       --index-url https://download.pytorch.org/whl/cu130 \
+    && /opt/ai-toolkit-venv/bin/python -m pip install -r /opt/ai-toolkit/requirements.txt
+
+RUN /opt/ai-toolkit-venv/bin/python -m pip install --no-cache-dir -U \
+      torchcodec==0.15.0 \
+      natten==0.21.7+torch2130cu130 --find-links https://whl.natten.org \
+      https://github.com/mjun0812/flash-attention-prebuild-wheels/releases/download/v0.9.47/flash_attn-2.8.3+cu130torch2.13-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl \
+    && /opt/ai-toolkit-venv/bin/python -c "import torch,flash_attn,natten,torchcodec; print(torch.__version__, torch.version.cuda, flash_attn.__version__, natten.__version__, torchcodec.__version__)"
+
+RUN /opt/ai-toolkit-venv/bin/python -m pip install jupyterlab
+
+RUN cd /opt/ai-toolkit/ui && npm ci && npm run update_db && npm run build
+
+COPY start-train.sh /usr/local/bin/start-train.sh
+
+RUN chmod 0755 /usr/local/bin/start-train.sh \
+    && mkdir -p /run/sshd /workspace \
+    && printf '%s\n' 'PermitRootLogin prohibit-password' 'PasswordAuthentication no' 'PubkeyAuthentication yes' \
+       > /etc/ssh/sshd_config.d/99-runpod.conf
+
+WORKDIR /workspace
+EXPOSE 22 8675 8888
+ENTRYPOINT ["/usr/bin/tini","--","/usr/local/bin/start-train.sh"]
